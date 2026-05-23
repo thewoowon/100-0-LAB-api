@@ -37,6 +37,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "https://www.100to0lab.com",
+        "https://100-0-lab.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
