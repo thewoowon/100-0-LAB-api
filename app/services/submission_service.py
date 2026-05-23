@@ -13,6 +13,8 @@ from app.models.admin_review import AdminReview, ReviewDecision
 from app.models.audit_log import AuditLog
 from app.schemas.submission import SubmissionCreate, AdminReviewRequest, MarkPaidRequest
 from app.services import r2_service
+from app.services import email_service
+from app.models.user import User
 
 
 PAYOUT_AMOUNT = 5000
@@ -126,6 +128,22 @@ def create_submission(
 
     db.commit()
     db.refresh(submission)
+
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user and user.email:
+            email_service.send_submission_confirmation(
+                to_email=user.email,
+                submission_no=submission.submission_no,
+                incident_type=submission.incident_type,
+                region_sido=submission.region_sido,
+                bank_name=payout_account.bank_name,
+                account_number_masked=payout_account.account_number_masked,
+                account_holder=payout_account.account_holder,
+            )
+    except Exception:
+        pass  # 이메일 실패가 제출 성공을 막으면 안 됨
+
     return submission
 
 
