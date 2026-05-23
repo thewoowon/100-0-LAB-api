@@ -68,6 +68,14 @@ def create_submission(
 ) -> VideoSubmission:
     file_bytes = video_file.file.read()
     file_hash = r2_service.compute_file_hash(file_bytes)
+
+    duplicate = db.query(VideoSubmission).filter(
+        VideoSubmission.original_file_hash == file_hash
+    ).first()
+    if duplicate:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=409, detail="이미 제출된 영상입니다. (중복 파일)")
+
     storage_key = f"submissions/{user_id}/{uuid.uuid4()}/{video_file.filename}"
     r2_service.upload_file(file_bytes, storage_key, video_file.content_type or "video/mp4")
 
@@ -170,6 +178,36 @@ def admin_review(db: Session, submission_id: int, admin_id: int, data: AdminRevi
 
     if decision == ReviewDecision.APPROVE:
         submission.status = SubmissionStatus.APPROVED
+
+        # VideoSubmission → Video 전환
+        from app.models.video import Video
+        public_key = submission.original_storage_key
+        if public_key:
+            try:
+                r2_service.copy_to_public(public_key)
+            except Exception:
+                pass
+            video_url = r2_service.get_public_url(public_key)
+        else:
+            video_url = ""
+
+        filmed_location = " ".join(filter(None, [
+            submission.region_sido,
+            submission.region_sigungu,
+            submission.approximate_address,
+        ])) or None
+
+        video = Video(
+            user_id=submission.user_id,
+            title=submission.title or f"{submission.incident_type} · {submission.region_sido}",
+            description=submission.description,
+            video_url=video_url,
+            filmed_location=filmed_location,
+        )
+        db.add(video)
+        db.flush()
+        submission.video_id = video.id
+
         payout_account = db.query(PayoutAccount).filter(PayoutAccount.user_id == submission.user_id).order_by(PayoutAccount.id.desc()).first()
         payout = Payout(
             submission_id=submission.id,

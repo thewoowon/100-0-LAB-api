@@ -9,6 +9,7 @@ R2_ACCESS_KEY_ID = config("R2_ACCESS_KEY_ID", default="")
 R2_SECRET_ACCESS_KEY = config("R2_SECRET_ACCESS_KEY", default="")
 R2_PRIVATE_BUCKET = config("R2_PRIVATE_BUCKET", default="100to0lab-private")
 R2_PUBLIC_BUCKET = config("R2_PUBLIC_BUCKET", default="100to0lab-public")
+R2_PUBLIC_URL = config("R2_PUBLIC_URL", default="")  # e.g. https://pub-xxx.r2.dev
 
 _client = None
 
@@ -47,6 +48,23 @@ def get_presigned_download_url(key: str, bucket: str = R2_PRIVATE_BUCKET, expire
 
 def delete_file(key: str, bucket: str = R2_PRIVATE_BUCKET) -> None:
     get_client().delete_object(Bucket=bucket, Key=key)
+
+
+def copy_to_public(source_key: str, dest_key: str = None) -> str:
+    if dest_key is None:
+        dest_key = source_key
+    get_client().copy_object(
+        CopySource={"Bucket": R2_PRIVATE_BUCKET, "Key": source_key},
+        Bucket=R2_PUBLIC_BUCKET,
+        Key=dest_key,
+    )
+    return dest_key
+
+
+def get_public_url(key: str) -> str:
+    if R2_PUBLIC_URL:
+        return f"{R2_PUBLIC_URL.rstrip('/')}/{key}"
+    return get_presigned_download_url(key, bucket=R2_PUBLIC_BUCKET, expires_in=86400 * 365)
 
 
 def compute_file_hash(file_bytes: bytes) -> str:
