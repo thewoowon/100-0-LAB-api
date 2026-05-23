@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     email: str
     nickname: Optional[str] = None
     profile_image: Optional[str] = None
+    role: str = "USER"
     created_at: datetime
 
     class Config:
