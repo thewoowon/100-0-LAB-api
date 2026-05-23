@@ -155,7 +155,7 @@ def upgrade() -> None:
     op.alter_column('casestatus', 'updated_at',
                existing_type=sa.DATETIME(),
                nullable=True)
-    op.add_column('user', sa.Column('role', sa.Enum('USER', 'ADMIN', 'SUPER_ADMIN', name='userrole'), nullable=False))
+    op.add_column('user', sa.Column('role', sa.Enum('USER', 'ADMIN', 'SUPER_ADMIN', name='userrole'), nullable=False, server_default='USER'))
     # ### end Alembic commands ###
 
 
