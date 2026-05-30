@@ -82,6 +82,31 @@ def admin_list(
     return submission_service.get_admin_submissions(db, status)
 
 
+@router.get("/admin/payouts", response_model=list[PayoutResponse])
+def admin_payouts(
+    status: Optional[str] = None,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Payout)
+    if status:
+        q = q.filter(Payout.status == status)
+    return q.order_by(Payout.id.desc()).all()
+
+
+@router.post("/admin/payouts/{payout_id}/mark-paid", response_model=PayoutResponse)
+def mark_payout_paid(
+    payout_id: int,
+    data: MarkPaidRequest,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    result = submission_service.mark_payout_paid(db, payout_id, admin.id, data)
+    if not result:
+        raise HTTPException(status_code=404, detail="Not found")
+    return result
+
+
 @router.get("/admin/{submission_id}", response_model=AdminSubmissionDetail)
 def admin_detail(
     submission_id: int,
@@ -103,31 +128,6 @@ def admin_review(
     db: Session = Depends(get_db),
 ):
     result = submission_service.admin_review(db, submission_id, admin.id, data)
-    if not result:
-        raise HTTPException(status_code=404, detail="Not found")
-    return result
-
-
-@router.get("/admin/payouts", response_model=list[PayoutResponse])
-def admin_payouts(
-    status: Optional[str] = None,
-    admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    q = db.query(Payout)
-    if status:
-        q = q.filter(Payout.status == status)
-    return q.order_by(Payout.id.desc()).all()
-
-
-@router.post("/admin/payouts/{payout_id}/mark-paid", response_model=PayoutResponse)
-def mark_payout_paid(
-    payout_id: int,
-    data: MarkPaidRequest,
-    admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    result = submission_service.mark_payout_paid(db, payout_id, admin.id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Not found")
     return result
