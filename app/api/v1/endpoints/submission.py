@@ -107,6 +107,21 @@ def mark_payout_paid(
     return result
 
 
+@router.get("/admin/{submission_id}/video-url")
+def admin_video_url(
+    submission_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from app.models.video_submission import VideoSubmission
+    from app.services import r2_service
+    sub = db.query(VideoSubmission).filter(VideoSubmission.id == submission_id).first()
+    if not sub or not sub.original_storage_key:
+        raise HTTPException(status_code=404, detail="영상 파일을 찾을 수 없습니다.")
+    url = r2_service.get_presigned_download_url(sub.original_storage_key, expires_in=3600)
+    return {"url": url}
+
+
 @router.get("/admin/{submission_id}", response_model=AdminSubmissionDetail)
 def admin_detail(
     submission_id: int,
