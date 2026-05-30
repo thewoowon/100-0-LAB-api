@@ -14,6 +14,10 @@ R2_PUBLIC_URL = config("R2_PUBLIC_URL", default="")  # e.g. https://pub-xxx.r2.d
 _client = None
 
 
+def is_configured() -> bool:
+    return bool(R2_ACCOUNT_ID and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY)
+
+
 def get_client():
     global _client
     if _client is None:
@@ -29,6 +33,8 @@ def get_client():
 
 
 def upload_file(file_bytes: bytes, key: str, content_type: str, bucket: str = R2_PRIVATE_BUCKET) -> str:
+    if not is_configured():
+        return key  # 로컬 개발 환경: 업로드 건너뜀
     get_client().put_object(
         Bucket=bucket,
         Key=key,
@@ -39,6 +45,8 @@ def upload_file(file_bytes: bytes, key: str, content_type: str, bucket: str = R2
 
 
 def get_presigned_download_url(key: str, bucket: str = R2_PRIVATE_BUCKET, expires_in: int = 3600) -> str:
+    if not is_configured():
+        return ""  # 로컬 개발 환경
     return get_client().generate_presigned_url(
         "get_object",
         Params={"Bucket": bucket, "Key": key},
@@ -47,10 +55,14 @@ def get_presigned_download_url(key: str, bucket: str = R2_PRIVATE_BUCKET, expire
 
 
 def delete_file(key: str, bucket: str = R2_PRIVATE_BUCKET) -> None:
+    if not is_configured():
+        return
     get_client().delete_object(Bucket=bucket, Key=key)
 
 
 def copy_to_public(source_key: str, dest_key: str = None) -> str:
+    if not is_configured():
+        return source_key
     if dest_key is None:
         dest_key = source_key
     get_client().copy_object(
@@ -62,6 +74,8 @@ def copy_to_public(source_key: str, dest_key: str = None) -> str:
 
 
 def get_public_url(key: str) -> str:
+    if not is_configured():
+        return ""
     if R2_PUBLIC_URL:
         return f"{R2_PUBLIC_URL.rstrip('/')}/{key}"
     return get_presigned_download_url(key, bucket=R2_PUBLIC_BUCKET, expires_in=86400 * 365)
