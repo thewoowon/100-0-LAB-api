@@ -122,18 +122,49 @@ def get_related_videos(video_id: int, db: Session, limit: int = 4) -> list[Video
     return sorted(videos, key=lambda v: id_order.get(v.id, 999))
 
 
+def _cascade_delete_video(video_id: int, db: Session):
+    """관련 레코드 모두 정리 후 영상 삭제."""
+    from app.models.vote import Vote
+    from app.models.case_status import CaseStatus
+    from app.models.video_submission import VideoSubmission
+
+    db.query(Vote).filter(Vote.video_id == video_id).delete()
+    db.query(CaseStatus).filter(CaseStatus.video_id == video_id).delete()
+    # submission의 video_id는 NULL 처리 (제출 이력은 유지)
+    db.query(VideoSubmission).filter(VideoSubmission.video_id == video_id).update({"video_id": None})
+
+    emb = db.query(VideoEmbedding).filter(VideoEmbedding.video_id == video_id).first()
+    if emb:
+        db.delete(emb)
+    embedding_service.remove_from_cache(video_id)
+
+    video = db.query(Video).filter(Video.id == video_id).first()
+    db.delete(video)  # Tag, Comment는 cascade="all, delete-orphan"으로 자동 삭제
+    db.commit()
+
+
 def delete_video(video_id: int, user_id: int, db: Session):
+    from app.models.video_submission import VideoSubmission, SubmissionStatus
+
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(status_code=404, detail="영상을 찾을 수 없습니다")
     if video.user_id != user_id:
         raise HTTPException(status_code=403, detail="권한이 없습니다")
 
-    existing_emb = db.query(VideoEmbedding).filter(VideoEmbedding.video_id == video_id).first()
-    if existing_emb:
-        db.delete(existing_emb)
+    # 채택된 영상은 업로더가 삭제 불가 (플랫폼이 라이선스 구매)
+    approved = db.query(VideoSubmission).filter(
+        VideoSubmission.video_id == video_id,
+        VideoSubmission.status == SubmissionStatus.APPROVED,
+    ).first()
+    if approved:
+        raise HTTPException(status_code=403, detail="채택된 영상은 삭제할 수 없습니다.")
 
-    embedding_service.remove_from_cache(video_id)
+    _cascade_delete_video(video_id, db)
 
-    db.delete(video)
-    db.commit()
+
+def admin_delete_video(video_id: int, db: Session):
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="영상을 찾을 수 없습니다")
+    _cascade_delete_video(video_id, db)

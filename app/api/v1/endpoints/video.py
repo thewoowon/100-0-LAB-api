@@ -6,9 +6,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from app.dependencies import get_db
+from app.dependencies import get_db, require_admin
 from app.core.security import get_current_user
-from app.services.video_service import get_feed, get_video, get_user_videos, create_video, delete_video, get_top_videos, get_controversial_videos, get_related_videos
+from app.models.user import User
+from app.services.video_service import get_feed, get_video, get_user_videos, create_video, delete_video, admin_delete_video, get_top_videos, get_controversial_videos, get_related_videos
 from app.schemas.video import VideoResponse, VideoFeedResponse, VideoLocationResponse
 from app.schemas.search import SearchResponse, SearchResultItem
 from settings import UPLOAD_DIR, THUMBNAIL_DIR
@@ -134,6 +135,12 @@ def upload(
         filmed_location=filmed_location,
     )
     return video
+
+
+@router.delete("/admin/{video_id}")
+def admin_remove_video(video_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    admin_delete_video(video_id, db)
+    return {"message": "삭제 완료"}
 
 
 @router.delete("/{video_id}")
