@@ -82,6 +82,30 @@ def admin_list(
     return submission_service.get_admin_submissions(db, status)
 
 
+@router.get("/recent-payouts")
+def recent_payouts(
+    limit: int = 8,
+    db: Session = Depends(get_db),
+):
+    from app.models.video_submission import VideoSubmission
+    rows = (
+        db.query(Payout, VideoSubmission)
+        .join(VideoSubmission, Payout.submission_id == VideoSubmission.id)
+        .filter(Payout.status == "PAID")
+        .order_by(Payout.paid_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "region": " ".join(filter(None, [sub.region_sido, sub.region_sigungu])),
+            "amount": payout.amount,
+            "paid_at": payout.paid_at.isoformat() if payout.paid_at else None,
+        }
+        for payout, sub in rows
+    ]
+
+
 @router.get("/admin/payouts", response_model=list[PayoutResponse])
 def admin_payouts(
     status: Optional[str] = None,
