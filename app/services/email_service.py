@@ -51,7 +51,7 @@ def send_submission_confirmation(
 
   <div style="background: #f8f8f8; padding: 16px; font-size: 13px; color: #555; margin-bottom: 24px; line-height: 1.6;">
     운영팀 검수 후 채택 여부가 결정됩니다.<br>
-    채택된 영상은 입력하신 계좌로 <strong>건당 5,000원</strong>이 지급됩니다.<br>
+    채택된 영상은 입력하신 계좌로 <strong>건당 30,000원</strong>이 지급됩니다.<br>
     검수 과정에서 추가 확인이 필요한 경우 연락드릴 수 있습니다.
   </div>
 

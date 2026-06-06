@@ -17,7 +17,7 @@ from app.services import email_service
 from app.models.user import User
 
 
-PAYOUT_AMOUNT = 5000
+PAYOUT_AMOUNT = 30000
 NOISE_RADIUS_METERS = 300
 
 
