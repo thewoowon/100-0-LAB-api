@@ -139,9 +139,10 @@ def create_submission(
 
     try:
         user = db.query(User).filter(User.id == user_id).first()
-        if user and user.email:
+        submitter_email = user.email if user else ""
+        if submitter_email:
             email_service.send_submission_confirmation(
-                to_email=user.email,
+                to_email=submitter_email,
                 submission_no=submission.submission_no,
                 incident_type=submission.incident_type,
                 region_sido=submission.region_sido,
@@ -149,6 +150,14 @@ def create_submission(
                 account_number_masked=payout_account.account_number_masked,
                 account_holder=payout_account.account_holder,
             )
+        region = " ".join(filter(None, [submission.region_sido, submission.region_sigungu])) or submission.region_sido
+        email_service.send_admin_new_submission(
+            submission_no=submission.submission_no,
+            submitter_email=submitter_email or "-",
+            incident_type=submission.incident_type,
+            region=region,
+            submission_id=submission.id,
+        )
     except Exception:
         pass  # 이메일 실패가 제출 성공을 막으면 안 됨
 

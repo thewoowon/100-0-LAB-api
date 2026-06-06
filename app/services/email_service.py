@@ -1,8 +1,32 @@
-import resend
+import smtplib
+import threading
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from decouple import config
 
-resend.api_key = config("RESEND_API_KEY", default="")
-FROM_EMAIL = config("FROM_EMAIL", default="noreply@100to0lab.com")
+GMAIL_USER = config("GMAIL_USER", default="")
+GMAIL_APP_PASSWORD = config("GMAIL_APP_PASSWORD", default="")
+ADMIN_NOTIFY_EMAIL = config("ADMIN_NOTIFY_EMAIL", default=GMAIL_USER)
+
+
+def _send(to: str, subject: str, html: str) -> None:
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        return
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"100:0 연구소 <{GMAIL_USER}>"
+    msg["To"] = to
+    msg.attach(MIMEText(html, "html", "utf-8"))
+    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+        smtp.sendmail(GMAIL_USER, to, msg.as_string())
+
+
+def _send_async(to: str, subject: str, html: str) -> None:
+    threading.Thread(target=_send, args=(to, subject, html), daemon=True).start()
 
 
 def send_submission_confirmation(
@@ -14,10 +38,7 @@ def send_submission_confirmation(
     account_number_masked: str,
     account_holder: str,
 ) -> None:
-    if not resend.api_key:
-        return
-
-    body = f"""
+    html = f"""
 <!DOCTYPE html>
 <html lang="ko">
 <head><meta charset="UTF-8"></head>
@@ -60,10 +81,51 @@ def send_submission_confirmation(
 </body>
 </html>
 """
+    _send_async(to_email, f"[100:0 LAB] 영상 제보 접수 완료 — {submission_no}", html)
 
-    resend.Emails.send({
-        "from": FROM_EMAIL,
-        "to": [to_email],
-        "subject": f"[100:0 LAB] 영상 제보 접수 완료 — {submission_no}",
-        "html": body,
-    })
+
+def send_admin_new_submission(
+    submission_no: str,
+    submitter_email: str,
+    incident_type: str,
+    region: str,
+    submission_id: int,
+) -> None:
+    if not ADMIN_NOTIFY_EMAIL:
+        return
+    admin_url = f"https://www.100to0lab.com/admin/submissions/{submission_id}"
+    html = f"""
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: sans-serif; color: #0a0a0a; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
+  <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">새 제보가 접수되었습니다</h2>
+  <p style="font-size: 14px; color: #888; margin-bottom: 32px;">100:0 연구소 관리자 알림</p>
+
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 24px;">
+    <tr style="border-bottom: 1px solid #e5e5e5;">
+      <td style="padding: 10px 0; color: #888; width: 120px;">접수번호</td>
+      <td style="padding: 10px 0; font-weight: 600;">{submission_no}</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e5e5;">
+      <td style="padding: 10px 0; color: #888;">제보자 이메일</td>
+      <td style="padding: 10px 0;">{submitter_email}</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e5e5;">
+      <td style="padding: 10px 0; color: #888;">사고 유형</td>
+      <td style="padding: 10px 0;">{incident_type}</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e5e5;">
+      <td style="padding: 10px 0; color: #888;">지역</td>
+      <td style="padding: 10px 0;">{region}</td>
+    </tr>
+  </table>
+
+  <a href="{admin_url}"
+     style="display: inline-block; background: #0a0a0a; color: #fff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none;">
+    검수하러 가기 →
+  </a>
+</body>
+</html>
+"""
+    _send_async(ADMIN_NOTIFY_EMAIL, f"[100:0 LAB] 새 제보 접수 — {submission_no}", html)
