@@ -120,3 +120,36 @@ def send_admin_new_submission(
         "subject": f"[100:0 LAB] 새 제보 접수 — {submission_no}",
         "html": html,
     })
+
+
+def send_admin_new_user(email: str, nickname: str) -> None:
+    if not resend.api_key or not ADMIN_NOTIFY_EMAIL:
+        return
+
+    html = f"""
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: sans-serif; color: #0a0a0a; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
+  <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">새 회원이 가입했습니다</h2>
+  <p style="font-size: 14px; color: #888; margin-bottom: 32px;">100:0 연구소 관리자 알림</p>
+
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <tr style="border-bottom: 1px solid #e5e5e5;">
+      <td style="padding: 10px 0; color: #888; width: 120px;">이메일</td>
+      <td style="padding: 10px 0; font-weight: 600;">{email}</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px 0; color: #888;">닉네임</td>
+      <td style="padding: 10px 0;">{nickname}</td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+    resend.Emails.send({
+        "from": FROM_EMAIL,
+        "to": [ADMIN_NOTIFY_EMAIL],
+        "subject": f"[100:0 LAB] 새 회원 가입 — {email}",
+        "html": html,
+    })

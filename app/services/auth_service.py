@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.token import Token
 from app.schemas.user import UserCreate
+from app.services import email_service
 from settings import (
     GOOGLE_TOKEN_INFO_URL,
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -40,6 +41,10 @@ def _get_or_create_user(db: Session, user_data: UserCreate) -> User:
         db.add(user)
         db.commit()
         db.refresh(user)
+        try:
+            email_service.send_admin_new_user(user.email, user.nickname or "")
+        except Exception:
+            pass
     return user
 
 
