@@ -52,6 +52,7 @@ class SubmissionDetail(SubmissionResponse):
 
 class AdminSubmissionDetail(SubmissionDetail):
     user_id: int
+    user_email: Optional[str]
     original_storage_key: Optional[str]
     original_lat: Optional[float]
     original_lng: Optional[float]

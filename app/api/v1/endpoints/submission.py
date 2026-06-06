@@ -132,7 +132,10 @@ def admin_detail(
     sub = db.query(VideoSubmission).filter(VideoSubmission.id == submission_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Not found")
-    return sub
+    user = db.query(User).filter(User.id == sub.user_id).first()
+    result = AdminSubmissionDetail.model_validate(sub)
+    result.user_email = user.email if user else None
+    return result
 
 
 @router.post("/admin/{submission_id}/review", response_model=SubmissionResponse)
