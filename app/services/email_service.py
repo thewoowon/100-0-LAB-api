@@ -1,32 +1,9 @@
-import smtplib
-import threading
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
+import resend
 from decouple import config
 
-GMAIL_USER = config("GMAIL_USER", default="")
-GMAIL_APP_PASSWORD = config("GMAIL_APP_PASSWORD", default="")
-ADMIN_NOTIFY_EMAIL = config("ADMIN_NOTIFY_EMAIL", default=GMAIL_USER)
-
-
-def _send(to: str, subject: str, html: str) -> None:
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
-        return
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"100:0 연구소 <{GMAIL_USER}>"
-    msg["To"] = to
-    msg.attach(MIMEText(html, "html", "utf-8"))
-    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-        smtp.ehlo()
-        smtp.starttls()
-        smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        smtp.sendmail(GMAIL_USER, to, msg.as_string())
-
-
-def _send_async(to: str, subject: str, html: str) -> None:
-    threading.Thread(target=_send, args=(to, subject, html), daemon=True).start()
+resend.api_key = config("RESEND_API_KEY", default="")
+FROM_EMAIL = config("FROM_EMAIL", default="noreply@100to0lab.com")
+ADMIN_NOTIFY_EMAIL = config("ADMIN_NOTIFY_EMAIL", default="")
 
 
 def send_submission_confirmation(
@@ -38,6 +15,9 @@ def send_submission_confirmation(
     account_number_masked: str,
     account_holder: str,
 ) -> None:
+    if not resend.api_key:
+        return
+
     html = f"""
 <!DOCTYPE html>
 <html lang="ko">
@@ -81,7 +61,12 @@ def send_submission_confirmation(
 </body>
 </html>
 """
-    _send_async(to_email, f"[100:0 LAB] 영상 제보 접수 완료 — {submission_no}", html)
+    resend.Emails.send({
+        "from": FROM_EMAIL,
+        "to": [to_email],
+        "subject": f"[100:0 LAB] 영상 제보 접수 완료 — {submission_no}",
+        "html": html,
+    })
 
 
 def send_admin_new_submission(
@@ -91,8 +76,9 @@ def send_admin_new_submission(
     region: str,
     submission_id: int,
 ) -> None:
-    if not ADMIN_NOTIFY_EMAIL:
+    if not resend.api_key or not ADMIN_NOTIFY_EMAIL:
         return
+
     admin_url = f"https://www.100to0lab.com/admin/submissions/{submission_id}"
     html = f"""
 <!DOCTYPE html>
@@ -128,4 +114,9 @@ def send_admin_new_submission(
 </body>
 </html>
 """
-    _send_async(ADMIN_NOTIFY_EMAIL, f"[100:0 LAB] 새 제보 접수 — {submission_no}", html)
+    resend.Emails.send({
+        "from": FROM_EMAIL,
+        "to": [ADMIN_NOTIFY_EMAIL],
+        "subject": f"[100:0 LAB] 새 제보 접수 — {submission_no}",
+        "html": html,
+    })
