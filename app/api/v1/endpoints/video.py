@@ -70,23 +70,20 @@ def search_videos_endpoint(q: str, top_k: int = 10, db: Session = Depends(get_db
 
 @router.get("/locations", response_model=list[VideoLocationResponse])
 def video_locations(db: Session = Depends(get_db)):
-    """모든 영상의 위치 정보 반환 (geocoding 포함)"""
     from app.models.video import Video
-    from app.services.geocoding_service import geocode
-    videos = db.query(Video).filter(Video.filmed_location != None).all()
-    results = []
-    for v in videos:
-        coords = geocode(v.filmed_location) if v.filmed_location else None
-        results.append(VideoLocationResponse(
+    videos = db.query(Video).all()
+    return [
+        VideoLocationResponse(
             id=v.id,
             title=v.title,
             filmed_location=v.filmed_location,
-            lat=coords[0] if coords else None,
-            lng=coords[1] if coords else None,
+            lat=v.lat,
+            lng=v.lng,
             thumbnail_url=v.thumbnail_url,
             views=v.views,
-        ))
-    return results
+        )
+        for v in videos
+    ]
 
 
 @router.get("/top", response_model=list[VideoResponse])

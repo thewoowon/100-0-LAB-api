@@ -203,6 +203,8 @@ def admin_review(db: Session, submission_id: int, admin_id: int, data: AdminRevi
             description=submission.description,
             video_url=video_url,
             filmed_location=filmed_location,
+            lat=submission.noisy_lat,
+            lng=submission.noisy_lng,
         )
         db.add(video)
         db.flush()

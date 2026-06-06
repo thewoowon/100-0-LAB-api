@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Float
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -14,6 +14,8 @@ class Video(Base):
     views = Column(Integer, nullable=False, default=0)
     filmed_date = Column(Date, nullable=True)
     filmed_location = Column(String, nullable=True)
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
 
     user = relationship("User", back_populates="videos")
     tags = relationship("Tag", back_populates="video", cascade="all, delete-orphan")
